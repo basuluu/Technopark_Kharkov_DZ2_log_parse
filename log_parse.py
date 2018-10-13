@@ -10,28 +10,27 @@ def add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, reques
     
     if request_type:
         if not request_type == line[2][1:]:
-            return False
+            return
     
     if ignore_urls:
         for url in ignore_urls:
             if url in line[3]:
-                return False
-        
-    if ignore_www:
-        if 'www' in line[3]:
-            line[3] = line[3].replace('www.', '')
+                return
             
     line = urlparse(line[3])
-    
+
     if slow_queries:
         slow_dict[line.netloc + line.path] += time_req
     
     if ignore_files:
         if re.search('\.\w{2}', line.path):
-            return False
-    
-    url_dict[line.netloc + line.path] += 1
+            return 
 
+    if ignore_www and line.netloc.rfind('www.', 0, 4) == 0:
+        url_dict[re.sub('www.', '', line.netloc, 1) + line.path] += 1
+    else:
+        url_dict[line.netloc + line.path] += 1
+        
     return url_dict
 
 def create_top_five_url(url_dict):
@@ -71,15 +70,8 @@ def parse(
             if start_at or stop_at:
                 date = "{} {}".format(line[0][1:], line[1][:-1])
                 date = datetime.strptime(date, '%d/%b/%Y %X')
-                if start_at and stop_at:
-                    if start_at < date < stop_at:
-                        add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, request_type, ignore_www, slow_queries)
-                elif start_at:
-                    if start_at < date:
-                        add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, request_type, ignore_www, slow_queries)
-                else:
-                    if date < stop_at:
-                        add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, request_type, ignore_www, slow_queries)
+                if (not start_at or start_at < date) and (not stop_at or stop_at > date):
+                    add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, request_type, ignore_www, slow_queries)
             else:
                 add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, request_type, ignore_www, slow_queries)
     if slow_queries:
