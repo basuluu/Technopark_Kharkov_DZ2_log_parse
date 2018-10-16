@@ -12,19 +12,17 @@ def add_to_url_dict(slow_dict, url_dict, line, ignore_files, ignore_urls, reques
         if not request_type == line[2][1:]:
             return
     
-    if ignore_urls:
-        for url in ignore_urls:
-            if url in line[3]:
-                return
-            
     line = urlparse(line[3])
 
-    if slow_queries:
-        slow_dict[line.netloc + line.path] += time_req
-    
+    if ignore_urls and line.netloc + line.path in ignore_urls:
+        return
+
     if ignore_files:
         if re.search('\.\w{2}', line.path):
             return 
+
+    if slow_queries:
+        slow_dict[line.netloc + line.path] += time_req
 
     if ignore_www and line.netloc.rfind('www.', 0, 4) == 0:
         url_dict[re.sub('www.', '', line.netloc, 1) + line.path] += 1
@@ -41,12 +39,12 @@ def create_top_five_url(url_dict):
     return my_list
 
 def create_untop_five_url(url_dict, slow_dict):
-    my_list1 = sorted(slow_dict, key = slow_dict.get, reverse = True)
-    for k in range(len(my_list1)):
-        my_list1[k] = slow_dict.get(my_list1[k]) // url_dict.get(my_list1[k])
-    my_list1.sort(reverse = True)
-    my_list1 = my_list1[:5]
-    return my_list1
+    my_list = []
+    for key in url_dict:
+        time = slow_dict.get(key) // url_dict.get(key)
+        my_list.append(time)
+    my_list.sort(reverse = True)
+    return my_list[:5]
 
 def parse(
     ignore_files=False,
@@ -57,6 +55,8 @@ def parse(
     ignore_www=False,
     slow_queries=False
 ):
+    if ignore_urls:
+        ignore_urls = set(ignore_urls)
     if start_at:
         start_at = datetime.strptime(start_at, '%d/%b/%Y %X')
     if stop_at:
